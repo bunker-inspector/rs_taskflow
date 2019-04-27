@@ -26,6 +26,14 @@ where T: Eq + Hash + Resolveable + Display {
     }
 
     pub fn dep(&'a mut self, from: &'a Node<'a, T>, to: &'a Node<'a, T>) -> &'a mut Dag<T> {
+        if !self.nodes.contains(from) {
+            panic!("Cannot add edge connecting to node that has not been added to the graph. Node: {}", from)
+        }
+
+        if !self.nodes.contains(to) {
+            panic!("Cannot add edge connecting to node that has not been added to the graph. Node: {}", to)
+        }
+
         if self.check_cycle(from, to) {
             panic!("Attempted edge insertion would cause cycle containing: {}. Aborting.", from)
         }
@@ -112,5 +120,16 @@ mod tests {
             .dep(&h, &f)
             .dep(&c, &f)
             .build();
+    }
+
+    #[test]
+    #[should_panic]
+    fn dep_without_node() {
+        let a = Node::new(MockResolveable::new('A'));
+        let b = Node::new(MockResolveable::new('B'));
+
+        let mut dag = Dag::new();
+
+        dag.dep(&b, &a);
     }
 }
