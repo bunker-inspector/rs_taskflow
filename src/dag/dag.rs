@@ -123,6 +123,39 @@ mod tests {
     }
 
     #[test]
+    fn node_hash() {
+        let a = Node::new(MockResolveable::new('A'));
+        let b = Node::new(MockResolveable::new('B'));
+        let c = Node::new(MockResolveable::new('C'));
+        let d = Node::new(MockResolveable::new('D'));
+        let e = Node::new(MockResolveable::new('E'));
+        let f = Node::new(MockResolveable::new('F'));
+        let g = Node::new(MockResolveable::new('G'));
+        let h = Node::new(MockResolveable::new('H'));
+
+        let mut hash: HashSet<&Node<MockResolveable>> = HashSet::new();
+
+        hash.insert(&a);
+        hash.insert(&b);
+        hash.insert(&c);
+        hash.insert(&d);
+        hash.insert(&e);
+        hash.insert(&f);
+        hash.insert(&g);
+        hash.insert(&h);
+
+        assert!(hash.contains(&a), "Node did not hash properly");
+        assert!(hash.contains(&b), "Node did not hash properly");
+        assert!(hash.contains(&c), "Node did not hash properly");
+        assert!(hash.contains(&d), "Node did not hash properly");
+        assert!(hash.contains(&e), "Node did not hash properly");
+        assert!(hash.contains(&f), "Node did not hash properly");
+        assert!(hash.contains(&g), "Node did not hash properly");
+        assert!(hash.contains(&h), "Node did not hash properly");
+    }
+
+
+    #[test]
     #[should_panic]
     fn dep_without_node() {
         let a = Node::new(MockResolveable::new('A'));

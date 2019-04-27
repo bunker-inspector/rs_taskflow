@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 use std::cell::RefCell;
 use std::fmt::{Display, Formatter, Result};
+use std::cmp::PartialEq;
 
 pub trait Resolveable {
     fn start(&mut self) -> ();
@@ -9,12 +10,19 @@ pub trait Resolveable {
     fn is_started(&self) -> bool;
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, Debug)]
 pub struct Node<'a, T>
 where T: Eq + Resolveable + Hash + Display {
     pub value: T,
     pub dependants: RefCell<HashSet<&'a Node<'a, T>>>,
     pub dependencies: RefCell<HashSet<&'a Node<'a, T>>>
+}
+
+impl<'a, T> PartialEq for Node<'a, T>
+where T: Eq + Resolveable + Hash + Display {
+    fn eq(&self, other: &Node<'a, T>) -> bool {
+        self.value == other.value
+    }
 }
 
 impl<'a, T> Display for Node<'a, T>
