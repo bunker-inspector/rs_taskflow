@@ -52,9 +52,6 @@ where T: Eq + Hash + Resolveable + Display {
         self
     }
 
-    pub fn build(&mut self) {
-    }
-
     fn check_cycle(&mut self, start: &'a Node<'a, T>, pt: &'a Node<'a, T>) -> bool {
         let mut visited: HashMap<&'a Node<'a, T>, CycleCheckStatus> = HashMap::new();
         visited.insert(start, CycleCheckStatus::Processing);
@@ -92,7 +89,6 @@ where T: Eq + Hash + Resolveable + Display {
 
         visited.insert(pt, CycleCheckStatus::Processed);
         true
-        
     }
 }
 
@@ -155,8 +151,7 @@ mod tests {
             .dep(&f, &d)
             .dep(&g, &f)
             .dep(&h, &f)
-            .dep(&c, &f) //causes cycle, panicks
-            .build();
+            .dep(&c, &f); //causes cycle, panicks
     }
 
     #[test]
