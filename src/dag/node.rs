@@ -15,7 +15,8 @@ pub struct Node<'a, T>
 where T: Eq + Resolveable + Hash + Display {
     pub value: T,
     pub dependants: RefCell<HashSet<&'a Node<'a, T>>>,
-    pub dependencies: RefCell<HashSet<&'a Node<'a, T>>>
+    pub dependencies: RefCell<HashSet<&'a Node<'a, T>>>,
+    pub cycle_safe: bool
 }
 
 impl<'a, T> PartialEq for Node<'a, T>
@@ -45,7 +46,8 @@ where T: Eq + Resolveable + Hash + Display {
         Node{
             value: v,
             dependants: RefCell::new(HashSet::new()),
-            dependencies: RefCell::new(HashSet::new())
+            dependencies: RefCell::new(HashSet::new()),
+            cycle_safe: false
         }
     }
 

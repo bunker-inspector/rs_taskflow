@@ -2,6 +2,7 @@ use crate::dag::node::Node;
 use crate::dag::node::Resolveable;
 
 use std::collections::HashSet;
+use std::collections::HashMap;
 use std::cmp::Eq;
 use std::hash::Hash;
 use std::fmt::{Display, Formatter};
@@ -10,6 +11,13 @@ use std::fmt::{Display, Formatter};
 struct Dag<'a, T>
 where T: Eq + Hash + Resolveable + Display {
     nodes: HashSet<&'a Node<'a, T>>,
+    leaves: HashSet<&'a Node<'a, T>>
+}
+
+enum CycleCheckStatus {
+    Initial,
+    Processing,
+    Processed
 }
 
 impl<'a, T> Dag<'a, T>
@@ -17,6 +25,7 @@ where T: Eq + Hash + Resolveable + Display {
     pub fn new() -> Dag<'a, T> {
         Dag{
             nodes: HashSet::new(),
+            leaves: HashSet::new()
         }
     }
 
@@ -34,7 +43,7 @@ where T: Eq + Hash + Resolveable + Display {
             panic!("Cannot add edge connecting to node that has not been added to the graph. Node: {}", to)
         }
 
-        if self.check_cycle(from, to) {
+        if !self.check_cycle(from, to) {
             panic!("Attempted edge insertion would cause cycle containing: {}. Aborting.", from)
         }
 
@@ -47,15 +56,43 @@ where T: Eq + Hash + Resolveable + Display {
     }
 
     fn check_cycle(&mut self, start: &'a Node<'a, T>, pt: &'a Node<'a, T>) -> bool {
-        if (pt as *const Node<'a, T>) == (start as *const Node<'a, T>) {
-            true
-        } else if pt.dependencies.borrow().is_empty() {
-            false
-        } else {
-            pt.dependencies.borrow()
-                .iter()
-                .any(|&dep| self.check_cycle(start, dep))
+        let mut visited: HashMap<&'a Node<'a, T>, CycleCheckStatus> = HashMap::new();
+        visited.insert(start, CycleCheckStatus::Processing);
+
+        return self._check_cycle(pt, &mut visited)
+    }
+
+    fn _check_cycle(&mut self,
+                    pt: &'a Node<'a, T>,
+                    visited: &mut HashMap<&'a Node<'a, T>, CycleCheckStatus>) -> bool {
+        visited.insert(pt, CycleCheckStatus::Processing);
+
+        let deps = pt.dependencies.borrow();
+
+        if deps.is_empty() {
+            self.leaves.insert(pt);
         }
+
+        for dep in deps.iter() {
+            let status = match visited.get(dep) {
+                Some(v) => v,
+                None    => &CycleCheckStatus::Initial
+            };
+
+            match status {
+                CycleCheckStatus::Initial    => {
+                    if !self._check_cycle(dep, visited) {
+                        return false;
+                    }
+                },
+                CycleCheckStatus::Processing => return false,
+                CycleCheckStatus::Processed  => {}
+            }
+        }
+
+        visited.insert(pt, CycleCheckStatus::Processed);
+        true
+        
     }
 }
 
@@ -99,7 +136,7 @@ mod tests {
         let f = Node::new(MockResolveable::new('F'));
         let g = Node::new(MockResolveable::new('G'));
         let h = Node::new(MockResolveable::new('H'));
-        
+
         let mut dag = Dag::new();
 
         dag.add(&a)
@@ -118,7 +155,7 @@ mod tests {
             .dep(&f, &d)
             .dep(&g, &f)
             .dep(&h, &f)
-            .dep(&c, &f)
+            .dep(&c, &f) //causes cycle, panicks
             .build();
     }
 
