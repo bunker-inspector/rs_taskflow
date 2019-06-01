@@ -1,3 +1,3 @@
 #![allow(dead_code)]
 
-mod dag;
+pub mod flow;
