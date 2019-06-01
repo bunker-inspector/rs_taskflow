@@ -58,13 +58,7 @@ where T: Eq + Hash + Resolveable<T> + Display {
 impl<'a, 'b, T> Flow<'a, 'b, T>
 where T: Eq + Hash + Resolveable<T> + Display {
     pub fn new_task(value: T) -> Task<'a, T> {
-        Task {
-            t: Node{
-                value,
-                dependencies: RefCell::new(HashSet::new()),
-                dependants: RefCell::new(HashSet::new())
-            }
-        }
+        Task{t: Node::new(value)}
     }
 
     pub fn dep(to: &'a Task<'a, T>, from:  &'a Task<'a, T>) {
@@ -72,6 +66,16 @@ where T: Eq + Hash + Resolveable<T> + Display {
     }
 
     pub fn start(&mut self) {
+    }
+
+    pub fn build(tasks: Vec<&'a Task<'b, T>>) -> Flow<'a, 'b, T> {
+        let mut nodes = Vec::new();
+
+        for task in tasks {
+            nodes.push(&task.t);
+        }
+
+        Flow{dag: Dag::build(nodes)}
     }
 }
  
