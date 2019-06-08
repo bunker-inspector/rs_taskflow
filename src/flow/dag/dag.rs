@@ -136,11 +136,11 @@ mod tests {
         Dag::dep(&b, &a);
         Dag::dep(&c, &b);
         Dag::dep(&d, &c);
-        Dag::dep(&d, &d);
         Dag::dep(&e, &d);
-        Dag::dep(&f, &f);
+        Dag::dep(&f, &d);
         Dag::dep(&g, &f);
-        Dag::dep(&h, &f);
+        Dag::dep(&h, &f); 
+        Dag::dep(&b, &d); //causes circular dependency
 
         Dag::build(vec![&a, &b, &c, &d, &e, &f, &g, &h]);
     }
@@ -153,7 +153,7 @@ mod tests {
         Dag::dep(&b, &a);
         Dag::remove(&a);
 
-        assert!(b.dependencies.borrow().len() == 0, "Node was not successfully removed");
+        assert!(b.dependencies.borrow().is_empty(), "Node was not successfully removed");
     }
 
     #[test]
