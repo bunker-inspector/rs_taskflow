@@ -50,4 +50,10 @@ where T: Eq + Hash + Display {
     pub fn add_dependant(&self, dep: &'a Node<'a, T>) {
         self.dependants.borrow_mut().insert(dep);
     }
+
+    pub fn remove(&self) {
+        for dependant in self.dependants.borrow().iter() {
+            dependant.dependencies.borrow_mut().remove(self);
+        }
+    }
 }

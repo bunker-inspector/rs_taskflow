@@ -43,6 +43,10 @@ where T: Eq + Hash + Display {
         to.add_dependant(from);
     }
 
+    pub fn remove(to_remove: &'a Node<'a, T>) {
+        to_remove.remove();
+    }
+
     fn check(dag: Dag<'a, 'b, T>) -> Dag<'a, 'b, T> {
         if dag.roots.is_empty() {
             panic!("No roots found. DAG is invalid!");
@@ -131,6 +135,17 @@ mod tests {
         Dag::dep(&h, &f);
 
         Dag::build(vec![&a, &b, &c, &d, &e, &f, &g, &h]);
+    }
+
+    #[test]
+    fn remove_nodes() {
+        let a = Dag::node(MockStruct::new('A'));
+        let b = Dag::node(MockStruct::new('B'));
+
+        Dag::dep(&b, &a);
+        Dag::remove(&a);
+
+        assert!(b.dependencies.borrow().len() == 0, "Node was not successfully removed");
     }
 
     #[test]
