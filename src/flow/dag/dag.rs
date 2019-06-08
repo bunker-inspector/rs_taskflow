@@ -38,6 +38,14 @@ where T: Eq + Hash + Display {
         Dag::check(Dag{roots})
     }
 
+    pub fn insert(&mut self, new_node: &'a Node<'b, T>) {
+        if (new_node.dependencies.borrow().is_empty()) {
+            self.roots.insert(new_node);
+        }
+
+        Dag::_check(new_node, &mut HashMap::new());
+    }
+
     pub fn dep(from: &'a Node<'a, T>, to: &'a Node<'a, T>) {
         from.add_dependency(to);
         to.add_dependant(from);
