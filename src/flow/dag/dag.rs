@@ -4,9 +4,7 @@ use std::collections::HashSet;
 use std::collections::HashMap;
 use std::cmp::Eq;
 use std::hash::Hash;
-use std::cell::RefCell;
 use std::fmt::{Display, Formatter};
-use std::result::Result;
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct Dag<'a, 'b, T>
@@ -39,7 +37,7 @@ where T: Eq + Hash + Display {
     }
 
     pub fn insert(&mut self, new_node: &'a Node<'b, T>) {
-        if (new_node.dependencies.borrow().is_empty()) {
+        if new_node.dependencies.borrow().is_empty() {
             self.roots.insert(new_node);
         }
 
