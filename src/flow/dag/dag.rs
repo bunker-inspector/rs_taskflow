@@ -9,7 +9,7 @@ use std::fmt::{Display, Formatter};
 #[derive(Eq, PartialEq, Debug)]
 pub struct Dag<'a, 'b, T>
 where T: Eq + Hash + Display {
-    roots: HashSet<&'a Node<'b, T>>
+    pub roots: HashSet<&'a Node<'b, T>>
 }
 
 enum CycleCheckStatus {
@@ -49,8 +49,16 @@ where T: Eq + Hash + Display {
         to.add_dependant(from);
     }
 
-    pub fn remove(to_remove: &'a Node<'a, T>) {
+    pub fn remove(&mut self, to_remove: &'a Node<'b, T>) {
         to_remove.remove();
+
+        self.roots.remove(to_remove);
+
+        for node in to_remove.dependants.borrow().iter() {
+            if node.dependencies.borrow().is_empty() {
+                self.roots.insert(&node);
+            }
+        }
     }
 
     fn check(dag: Dag<'a, 'b, T>) -> Dag<'a, 'b, T> {
@@ -149,8 +157,10 @@ mod tests {
         let b = Dag::node(MockStruct::new('B'));
 
         Dag::dep(&b, &a);
-        Dag::remove(&a);
+        let mut dag = Dag::build(vec![&a, &b]);
 
+        assert!(!b.dependencies.borrow().is_empty(), "Node was not successfully removed");
+        dag.remove(&a);
         assert!(b.dependencies.borrow().is_empty(), "Node was not successfully removed");
     }
 
@@ -185,4 +195,4 @@ mod tests {
         assert!(hash.contains(&g), "Node did not hash properly");
         assert!(hash.contains(&h), "Node did not hash properly");
     }
-    }
+}
