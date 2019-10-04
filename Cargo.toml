@@ -5,3 +5,5 @@ authors = ["Ted Kassen <tedgkassen@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+tokio = "0.1.22"
+futures = "0.1.29"

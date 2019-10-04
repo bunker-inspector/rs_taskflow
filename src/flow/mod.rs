@@ -8,17 +8,18 @@ use std::hash::{Hash, Hasher};
 use std::fmt::{Display, Formatter, Result};
 use std::marker::PhantomData;
 use helpers::{DefaultResolveable, Resolveable, RefCellWrapper};
-use std::collections::{VecDeque, HashSet};
+use std::collections::{VecDeque, HashSet, HashMap};
 
-pub struct Flow<'a, 'b, T, U>
-where T: Eq + Hash + Resolveable<U> + Display {
+pub struct Flow<'a, 'b, T, U, E>
+where T: Eq + Hash + Resolveable<U, E> + Display {
     dag: Dag<'a, 'b, RefCellWrapper<T>>,
     ready: VecDeque<&'a Node<'b, RefCellWrapper<T>>>,
+    errors: HashMap<&'a Node<'b, RefCellWrapper<T>>,E>,
     phantom: Option<PhantomData<U>>
 }
 
-impl<'a, 'b, T, U> Flow<'a, 'b, T, U>
-where T: Eq + Hash + Resolveable<U> + Display {
+impl<'a, 'b, T, U, E> Flow<'a, 'b, T, U, E>
+where T: Eq + Hash + Resolveable<U, E> + Display {
     pub fn new_task(value: T) -> Node<'a, RefCellWrapper<T>> {
         Node::new(RefCellWrapper::new(value))
     }
@@ -46,7 +47,7 @@ where T: Eq + Hash + Resolveable<U> + Display {
         }
     }
 
-    pub fn build(tasks: Vec<&'a Node<'b, RefCellWrapper<T>>>) -> Flow<'a, 'b, T, U> {
+    pub fn build(tasks: Vec<&'a Node<'b, RefCellWrapper<T>>>) -> Flow<'a, 'b, T, U, E> {
         let mut ready = VecDeque::new();
 
         for task in tasks.iter() {
@@ -55,7 +56,7 @@ where T: Eq + Hash + Resolveable<U> + Display {
             }
         }
 
-        Flow{dag: Dag::build(tasks), ready, phantom: None}
+        Flow{dag: Dag::build(tasks), ready, phantom: None, errors: HashMap::new()}
     }
 }
 
@@ -65,18 +66,15 @@ mod tests {
 
     #[test]
     fn flow_test() {
-        let a = Flow::new_task(DefaultResolveable::new(&(|| -> i32 {
-            println!("a");
-            1
-        })));
-        let b = Flow::new_task(DefaultResolveable::new(&(|| -> i32 {
-            println!("b");
-            2
-        })));
-        let c = Flow::new_task(DefaultResolveable::new(&(|| -> i32 {
-            println!("c");
-            3
-        })));
+        let a = Flow::new_task(DefaultResolveable::new(
+            &(|| -> i32 {1}),
+            &(|| -> i32 {-1})));
+        let b = Flow::new_task(DefaultResolveable::new(
+            &(|| -> i32 {2}),
+            &(|| -> i32 {-2})));
+        let c = Flow::new_task(DefaultResolveable::new(
+            &(|| -> i32 {3}),
+            &(|| -> i32 {-3})));
 
         Flow::dep(&a, &b);
         Flow::dep(&b, &c);
@@ -87,8 +85,8 @@ mod tests {
 
     #[test]
     fn flow_test_2() {
-        let a = Flow::new_task(DefaultResolveable::new(&(|| -> i32 {1})));
-        let b = Flow::new_task(DefaultResolveable::new(&(|| -> i32 {2})));
+        let a = Flow::new_task(DefaultResolveable::new(&(|| -> i32 {1}), &(|| -> i32 {-1})));
+        let b = Flow::new_task(DefaultResolveable::new(&(|| -> i32 {2}), &(|| -> i32 {-2})));
 
         Flow::dep(&a, &b);
         let mut flow = Flow::build(vec![&a, &b]);
@@ -99,8 +97,8 @@ mod tests {
 
     #[test]
     fn hash_test() {
-        let a = Flow::new_task(DefaultResolveable::new(&(|| -> i32 {1})));
-        let b = Flow::new_task(DefaultResolveable::new(&(|| -> i32 {2})));
+        let a = Flow::new_task(DefaultResolveable::new(&(|| -> i32 {1}), &(|| -> i32 {-1})));
+        let b = Flow::new_task(DefaultResolveable::new(&(|| -> i32 {2}), &(|| -> i32 {-2})));
 
         let mut foo = HashSet::new();
 

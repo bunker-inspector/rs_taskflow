@@ -2,20 +2,23 @@ use std::cell::RefCell;
 use std::fmt::{Display, Formatter, Result};
 use std::hash::{Hash, Hasher};
 use std::collections::HashSet;
+use futures::{Future, Async, Poll};
 
-pub trait Resolveable<T> {
+pub trait Resolveable<T, E> {
     fn exec(&mut self) -> T;
     fn resolved(&self) -> bool;
     fn started(&self) -> bool;
+    fn error(&self) -> E;
 }
 
-pub struct DefaultResolveable<'a, T> {
+pub struct DefaultResolveable<'a, T, E> {
     task: &'a Fn() -> T,
     started: bool,
-    complete: bool
+    complete: bool,
+    error: &'a Fn() -> E
 }
 
-impl<'a, T> Resolveable<T> for DefaultResolveable<'a, T> {
+impl<'a, T, E> Resolveable<T, E> for DefaultResolveable<'a, T, E> {
     fn exec(&mut self) -> T {
         self.started = true;
         let result = (self.task)();
@@ -32,25 +35,37 @@ impl<'a, T> Resolveable<T> for DefaultResolveable<'a, T> {
         self.started
     }
 
+    fn error(&self) -> E {
+        (self.error)()
+    }
 }
 
-impl<'a, T> PartialEq for DefaultResolveable<'a, T> {
-    fn eq(&self, other: &DefaultResolveable<'a, T>) -> bool {
+impl<'a, T, E> Future for DefaultResolveable<'a, T, E> {
+    type Item = T;
+    type Error = E;
+
+    fn poll(&mut self) -> Poll<T, E> {
+        Ok(Async::Ready(self.exec()))
+    }
+}
+
+impl<'a, T, E> PartialEq for DefaultResolveable<'a, T, E> {
+    fn eq(&self, other: &DefaultResolveable<'a, T, E>) -> bool {
         (self.task as *const Fn() -> T) == (other.task as *const Fn() -> T)
             && self.started == other.started
             && self.complete == other.complete
     }
 }
 
-impl<'a, T> Eq for DefaultResolveable<'a, T> {}
+impl<'a, T, E> Eq for DefaultResolveable<'a, T, E> {}
 
-impl<'a, T> Display for DefaultResolveable<'a, T> {
+impl<'a, T, E> Display for DefaultResolveable<'a, T, E> {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(f, "DefaultResolveable: {:?}", self as *const DefaultResolveable<'a, T>)
+        write!(f, "DefaultResolveable: {:?}", self as *const DefaultResolveable<'a, T, E>)
     }
 }
 
-impl<'a, T> Hash for DefaultResolveable<'a, T>
+impl<'a, T, E> Hash for DefaultResolveable<'a, T, E>
 where T: {
     fn hash<H: Hasher>(&self, state: &mut H) {
         (self.task as *const Fn() -> T).hash(state);
@@ -59,9 +74,9 @@ where T: {
     }
 }
 
-impl<'a, T> DefaultResolveable<'a, T> {
-    pub fn new(task: &'a Fn() -> T) -> DefaultResolveable<T> {
-        DefaultResolveable{task, started: false, complete: false}
+impl<'a, T, E> DefaultResolveable<'a, T, E> {
+    pub fn new(task: &'a Fn() -> T, error: &'a Fn() -> E) -> DefaultResolveable<'a, T, E> {
+        DefaultResolveable{task, error, started: false, complete: false}
     }
 }
 
@@ -101,8 +116,8 @@ where T: Eq + Hash {
     }
 }
 
-impl<T, U> Resolveable<U> for RefCellWrapper<T>
-where U: Eq, T: Eq + Resolveable<U> {
+impl<T, U, E> Resolveable<U, E> for RefCellWrapper<T>
+where U: Eq, T: Eq + Resolveable<U, E> {
     fn exec(&mut self) -> U {
         (*self.c.borrow_mut()).exec()
     }
@@ -113,6 +128,10 @@ where U: Eq, T: Eq + Resolveable<U> {
 
     fn started(&self) -> bool {
         (*self.c.borrow()).started()
+    }
+
+    fn error(&self) -> E {
+        self.error()
     }
 }
 
