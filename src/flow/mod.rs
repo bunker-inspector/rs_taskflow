@@ -28,9 +28,25 @@ macro_rules! futurize {
             type Error = $e;
 
             fn poll(&mut self) -> Poll<$t, $e> {
-                Ok(Async::Ready(self.exec()))
+                Ok(Async::Ready(match self.exec() {
+                    Ok(success) => success,
+                    Err(err)    => err
+                }))
             }
-        } 
+        }
+
+        impl<'a> Future for RefCellWrapper<$x<'a, $t, $e>>
+        where $x<'a, $t, $e>: Eq + Hash + Resolveable<$t, $e> + Display {
+            type Item = $t;
+            type Error = $e;
+
+            fn poll(&mut self) -> Poll<$t, $e> {
+                Ok(Async::Ready(match self.c.borrow_mut().exec() {
+                    Ok(success) => success,
+                    Err(err)    => err
+                }))
+            }
+        }
     }
 }
 
@@ -84,55 +100,42 @@ where T: Eq + Hash + Resolveable<U, E> + Display + Future {
 
       #[test]
       fn flow_test() {
-          let a_dr = DefaultResolveable::new(
-              &(|| -> i32 {1}),
-              &(|| -> i32 {-1})
-          );
-          let b_dr = DefaultResolveable::new(
-              &(|| -> i32 {2}),
-              &(|| -> i32 {-2})
-          );
-          let c_dr = DefaultResolveable::new(
-              &(|| -> i32 {3}),
-              &(|| -> i32 {-3})
-          );
+          let a = Flow::new_task(DefaultResolveable::new(&(|| {Ok(1)})));
+          let b = Flow::new_task(DefaultResolveable::new(&(|| {Ok(2)})));
+          let c = Flow::new_task(DefaultResolveable::new(&(|| {Ok(3)})));
 
-          let a = Flow::new_task(a_dr);
-          let b = Flow::new_task(b_dr);
-          let c = Flow::new_task(c_dr);
+          Flow::dep(&a, &b);
+                                 Flow::dep(&b, &c);
+                                 let mut flow = Flow::build(vec![&a, &b, &c]);
 
-        Flow::dep(&a, &b);
-        Flow::dep(&b, &c);
-        let mut flow = Flow::build(vec![&a, &b, &c]);
-
-        flow.start();
-    }
+                                 flow.start();
+          }
 
     #[test]
-    fn flow_test_2() {
-        let a = Flow::new_task(DefaultResolveable::new(&(|| -> i32 {1}), &(|| -> i32 {-1})));
-        let b = Flow::new_task(DefaultResolveable::new(&(|| -> i32 {2}), &(|| -> i32 {-2})));
+      fn flow_test_2() {
+          let a = Flow::new_task(DefaultResolveable::new(&(|| {Ok(1)})));
+          let b = Flow::new_task(DefaultResolveable::new(&(|| {Ok(2)})));
 
-        Flow::dep(&a, &b);
-        let mut flow = Flow::build(vec![&a, &b]);
+          Flow::dep(&a, &b);
+          let mut flow = Flow::build(vec![&a, &b]);
 
-        assert!(&a.dependencies.borrow().contains(&b));
-        assert!(&b.dependants.borrow().contains(&a));
-    }
+          assert!(&a.dependencies.borrow().contains(&b));
+          assert!(&b.dependants.borrow().contains(&a));
+      }
 
     #[test]
-    fn hash_test() {
-        let a = Flow::new_task(DefaultResolveable::new(&(|| -> i32 {1}), &(|| -> i32 {-1})));
-        let b = Flow::new_task(DefaultResolveable::new(&(|| -> i32 {2}), &(|| -> i32 {-2})));
+      fn hash_test() {
+          let a = Flow::new_task(DefaultResolveable::new(&(|| {Ok(1)})));
+          let b = Flow::new_task(DefaultResolveable::new(&(|| {Ok(2)})));
 
-        let mut foo = HashSet::new();
+          let mut foo = HashSet::new();
 
-        foo.insert(&a);
-        foo.insert(&b);
-        assert!(foo.len() == 2);
+          foo.insert(&a);
+          foo.insert(&b);
+          assert!(foo.len() == 2);
 
-        foo.remove(&a);
-        foo.remove(&a);
-        assert!(foo.len() == 1)
+          foo.remove(&a);
+          foo.remove(&a);
+          assert!(foo.len() == 1)
     }
 }
