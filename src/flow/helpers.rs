@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::fmt::{Display, Formatter, Result};
 use std::hash::{Hash, Hasher};
 use std::collections::HashSet;
-use futures::{Future, Async, Poll};
 
 pub trait Resolveable<T, E> {
     fn exec(&mut self) -> T;
@@ -37,15 +36,6 @@ impl<'a, T, E> Resolveable<T, E> for DefaultResolveable<'a, T, E> {
 
     fn handle_error(&self) -> E {
         (self.error)()
-    }
-}
-
-impl<'a, T, E> Future for DefaultResolveable<'a, T, E> {
-    type Item = T;
-    type Error = E;
-
-    fn poll(&mut self) -> Poll<T, E> {
-        Ok(Async::Ready(self.exec()))
     }
 }
 

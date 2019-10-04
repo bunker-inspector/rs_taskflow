@@ -9,6 +9,7 @@ use std::fmt::{Display, Formatter, Result};
 use std::marker::PhantomData;
 use helpers::{DefaultResolveable, Resolveable, RefCellWrapper};
 use std::collections::{VecDeque, HashSet, HashMap};
+use futures::{Future, Async, Poll};
 
 pub struct Flow<'a, 'b, T, U, E>
 where T: Eq + Hash + Resolveable<U, E> + Display {
@@ -18,8 +19,25 @@ where T: Eq + Hash + Resolveable<U, E> + Display {
     phantom: Option<PhantomData<U>>
 }
 
+#[macro_export]
+macro_rules! futurize {
+    ($x:ident, $t:ty, $e:ty) => {
+        impl<'a> Future for $x<'a, $t, $e>
+        where $x<'a, $t, $e>: Eq + Hash + Resolveable<$t, $e> + Display {
+            type Item = $t;
+            type Error = $e;
+
+            fn poll(&mut self) -> Poll<$t, $e> {
+                Ok(Async::Ready(self.exec()))
+            }
+        } 
+    }
+}
+
+futurize!(DefaultResolveable, u32, u32);
+
 impl<'a, 'b, T, U, E> Flow<'a, 'b, T, U, E>
-where T: Eq + Hash + Resolveable<U, E> + Display {
+where T: Eq + Hash + Resolveable<U, E> + Display + Future {
     pub fn new_task(value: T) -> Node<'a, RefCellWrapper<T>> {
         Node::new(RefCellWrapper::new(value))
     }
@@ -60,21 +78,28 @@ where T: Eq + Hash + Resolveable<U, E> + Display {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+  #[cfg(test)]
+  mod tests {
+      use super::*;
 
-    #[test]
-    fn flow_test() {
-        let a = Flow::new_task(DefaultResolveable::new(
-            &(|| -> i32 {1}),
-            &(|| -> i32 {-1})));
-        let b = Flow::new_task(DefaultResolveable::new(
-            &(|| -> i32 {2}),
-            &(|| -> i32 {-2})));
-        let c = Flow::new_task(DefaultResolveable::new(
-            &(|| -> i32 {3}),
-            &(|| -> i32 {-3})));
+      #[test]
+      fn flow_test() {
+          let a_dr = DefaultResolveable::new(
+              &(|| -> i32 {1}),
+              &(|| -> i32 {-1})
+          );
+          let b_dr = DefaultResolveable::new(
+              &(|| -> i32 {2}),
+              &(|| -> i32 {-2})
+          );
+          let c_dr = DefaultResolveable::new(
+              &(|| -> i32 {3}),
+              &(|| -> i32 {-3})
+          );
+
+          let a = Flow::new_task(a_dr);
+          let b = Flow::new_task(b_dr);
+          let c = Flow::new_task(c_dr);
 
         Flow::dep(&a, &b);
         Flow::dep(&b, &c);
