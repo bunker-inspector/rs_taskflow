@@ -8,7 +8,7 @@ pub trait Resolveable<T, E> {
     fn exec(&mut self) -> T;
     fn resolved(&self) -> bool;
     fn started(&self) -> bool;
-    fn error(&self) -> E;
+    fn handle_error(&self) -> E;
 }
 
 pub struct DefaultResolveable<'a, T, E> {
@@ -35,7 +35,7 @@ impl<'a, T, E> Resolveable<T, E> for DefaultResolveable<'a, T, E> {
         self.started
     }
 
-    fn error(&self) -> E {
+    fn handle_error(&self) -> E {
         (self.error)()
     }
 }
@@ -130,8 +130,8 @@ where U: Eq, T: Eq + Resolveable<U, E> {
         (*self.c.borrow()).started()
     }
 
-    fn error(&self) -> E {
-        self.error()
+    fn handle_error(&self) -> E {
+        (*self.c.borrow_mut()).handle_error()
     }
 }
 
