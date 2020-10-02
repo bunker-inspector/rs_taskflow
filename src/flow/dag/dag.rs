@@ -1,27 +1,31 @@
 use crate::flow::dag::node::Node;
 
-use std::collections::HashSet;
-use std::collections::HashMap;
 use std::cmp::Eq;
-use std::hash::Hash;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
+use std::hash::Hash;
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct Dag<'a, 'b, T>
-where T: Eq + Hash + Display {
-    pub roots: HashSet<&'a Node<'b, T>>
+where
+    T: Eq + Hash + Display,
+{
+    pub roots: HashSet<&'a Node<'b, T>>,
 }
 
 enum CycleCheckStatus {
     Initial,
     Processing,
-    Processed
+    Processed,
 }
 
 impl<'a, 'b, T> Dag<'a, 'b, T>
-where T: Eq + Hash + Display {
+where
+    T: Eq + Hash + Display,
+{
     pub fn node(value: T) -> Node<'b, T> {
-        Node::new(value) 
+        Node::new(value)
     }
 
     pub fn build(nodes: Vec<&'a Node<'b, T>>) -> Dag<'a, 'b, T> {
@@ -33,7 +37,7 @@ where T: Eq + Hash + Display {
             }
         }
 
-        Dag::check(Dag{roots})
+        Dag::check(Dag { roots })
     }
 
     pub fn insert(&mut self, new_node: &'a Node<'b, T>) {
@@ -66,18 +70,21 @@ where T: Eq + Hash + Display {
             panic!("No roots found. DAG is invalid!");
         }
 
-        if dag.roots.iter()
+        if dag
+            .roots
+            .iter()
             .all(|root| Dag::_check(&root, &mut HashMap::new()))
         {
             dag
         } else {
             panic!("Invalid DAG detected")
         }
-
     }
 
-    fn _check(pt: &'a Node<'b, T>,
-              visited: &mut HashMap<&'a Node<'b, T>, CycleCheckStatus>) -> bool {
+    fn _check(
+        pt: &'a Node<'b, T>,
+        visited: &mut HashMap<&'a Node<'b, T>, CycleCheckStatus>,
+    ) -> bool {
         visited.insert(pt, CycleCheckStatus::Processing);
 
         let deps = pt.dependants.borrow();
@@ -87,17 +94,17 @@ where T: Eq + Hash + Display {
 
             let status = match visited.get(dep) {
                 Some(v) => v,
-                None    => &CycleCheckStatus::Initial
+                None => &CycleCheckStatus::Initial,
             };
 
             match status {
-                CycleCheckStatus::Initial    => {
+                CycleCheckStatus::Initial => {
                     if !Dag::_check(dep, visited) {
                         return false;
                     }
-                },
+                }
                 CycleCheckStatus::Processing => return false,
-                CycleCheckStatus::Processed  => {}
+                CycleCheckStatus::Processed => {}
             }
         }
 
@@ -112,12 +119,12 @@ mod tests {
 
     #[derive(Hash, Eq, PartialEq, Debug)]
     struct MockStruct {
-        id: char
+        id: char,
     }
 
     impl MockStruct {
         fn new(id: char) -> MockStruct {
-            MockStruct{id}
+            MockStruct { id }
         }
     }
 
@@ -145,7 +152,7 @@ mod tests {
         Dag::dep(&e, &d);
         Dag::dep(&f, &d);
         Dag::dep(&g, &f);
-        Dag::dep(&h, &f); 
+        Dag::dep(&h, &f);
         Dag::dep(&b, &d); //causes circular dependency
 
         Dag::build(vec![&a, &b, &c, &d, &e, &f, &g, &h]);
@@ -159,9 +166,15 @@ mod tests {
         Dag::dep(&b, &a);
         let mut dag = Dag::build(vec![&a, &b]);
 
-        assert!(!b.dependencies.borrow().is_empty(), "Node was not successfully removed");
+        assert!(
+            !b.dependencies.borrow().is_empty(),
+            "Node was not successfully removed"
+        );
         dag.remove(&a);
-        assert!(b.dependencies.borrow().is_empty(), "Node was not successfully removed");
+        assert!(
+            b.dependencies.borrow().is_empty(),
+            "Node was not successfully removed"
+        );
     }
 
     #[test]
